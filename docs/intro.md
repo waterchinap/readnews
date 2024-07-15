@@ -2,46 +2,37 @@
 sidebar_position: 1
 ---
 
-# Tutorial Intro
+# 关于本站
 
-Let's discover **Docusaurus in less than 5 minutes**.
+这个主要用来一站式看新闻。
 
-## Getting Started
+## 目录结构
 
-Get started by **creating a new site**.
+- 主目录为/docs
+- 一级目录准备用日期
+- 二级目录为频道
+- 三级目录为具体文章
 
-Or **try Docusaurus immediately** with **[docusaurus.new](https://docusaurus.new)**.
+目录需要注意的地方：
+- 目录下文件如果和目录名相同，就成了一个特殊的文件，不会显示为单独的文件，所以尽量不要和目录名相同。一般不会。
+- 最后一级的文件排序还没有想好怎么做。
+- 第一级目录按日期倒序排，这个看如何做。
+  - 为每一个一级目录创建一个文件，文件名和目录名相同，内容是为了确定一级目录下的顺序。
 
-### What you'll need
-
-- [Node.js](https://nodejs.org/en/download/) version 18.0 or above:
-  - When installing Node.js, you are recommended to check all checkboxes related to dependencies.
-
-## Generate a new site
-
-Generate a new Docusaurus site using the **classic template**.
-
-The classic template will automatically be added to your project after you run the command:
-
-```bash
-npm init docusaurus@latest my-website classic
-```
-
-You can type this command into Command Prompt, Powershell, Terminal, or any other integrated terminal of your code editor.
-
-The command also installs all necessary dependencies you need to run Docusaurus.
-
-## Start your site
+## 使用
 
 Run the development server:
 
 ```bash
 cd my-website
 npm run start
+npm run deploy # deploys your site to cloudflare
 ```
 
-The `cd` command changes the directory you're working with. In order to work with your newly created Docusaurus site, you'll need to navigate the terminal there.
+## 实现思路
 
-The `npm run start` command builds your website locally and serves it through a development server, ready for you to view at http://localhost:3000/.
+- rsshub提供路由
+- feedparser解析各频道
+- 处理解析的文本，为每个文章生成一个md文件并放入相应文件路径
 
-Open `docs/intro.md` (this page) and edit some lines: the site **reloads automatically** and displays your changes.
+
