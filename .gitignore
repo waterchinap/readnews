@@ -22,3 +22,48 @@ yarn-error.log*
 # wrangler files
 .wrangler
 .dev.vars
+
+# Python 忽略项  
+__pycache__/  
+*.pyc  
+*.pyo  
+dist/  
+build/  
+*.egg-info/  
+.env  
+.venv/  
+.idea/  
+.vscode/  
+  
+# 通用忽略项  
+*.tmp  
+*.swp  
+*.swo  
+*.DS_Store  
+  
+# 编译后的JavaScript文件（可选，如果你不想跟踪编译后的文件）  
+dist/ # 如果你使用Webpack等构建工具并输出到dist目录  
+  
+# 本地配置文件（可选，根据项目实际情况添加）  
+config/local.json  
+  
+# 其他IDE或编辑器生成的临时文件或目录（根据你的使用情况添加）  
+.DS_Store  
+.idea/  
+.vscode/  
+.project  
+.classpath  
+*.sublime-project  
+*.sublime-workspace  
+  
+# 其他自定义忽略项（根据项目需求添加）  
+# 例如，如果你使用Docker，可能会添加Dockerfile相关的忽略项  
+# docker-compose.override.yml  
+# .dockerignore  
+  
+# 忽略所有以.开头的隐藏文件或目录，但保留.gitignore和.git目录（不推荐，因为可能会忽略重要文件）  
+# !.gitignore  
+# !/.git/  
+# 更推荐的做法是明确指定需要忽略的隐藏文件或目录
+
+/docs

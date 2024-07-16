@@ -3,9 +3,10 @@ import pandas as pd
 from pathlib import Path
 from bs4 import BeautifulSoup as bs
 import re
+import fire
 
-def readnews():
-    routers = [
+SERVER = 'http://localhost:1200'
+ROUTERS = [
     '/zaobao/znews/china',
     '/thepaper/featured',
     '/ftchinese/simplified/hotstoryby7day',
@@ -16,16 +17,36 @@ def readnews():
     '/yicai/headline',
     '/caijing/roll',
     '/cls/hot']
-    for i in range(len(routers)):
-        print(f'{i}: {routers[i]}')
-    n = int(input('请输入一个数字: '))
-    if n > len(routers)-1:
-        print('数字超出列表长度')
-        exit()
-    else:
-        df = get_content('http://localhost:1200'+routers[n])
 
-        return df    
+def get_a_news(feed, n=0):
+    # recieve a feed obj and a number
+    d = feed.entries
+    if n == 0:
+        items = len(d)
+    elif n < len(d):
+        items = n
+    else: items=len(d)
+
+    text = '\n\n'.join(
+        [f'## {t.title}\n\n{de_tag(t.description)}' for t in d[:items]]
+    )
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    content = {
+        'agent': feed['feed'].title,
+        'text': text
+    }
+    print(f'{feed["feed"].title} is ok!')
+    return content
+
+def pub_all(n=0):
+    for r in ROUTERS:
+        f = feedparser.parse(SERVER+r)
+        if not 'title' in f.feed:
+            print(r +' failed!')
+            continue
+        content = get_a_news(f, n)
+        md_file(content)
+    return 'published!'
 
 def get_content(url, n=10):
     f = feedparser.parse(url)
@@ -68,28 +89,23 @@ def de_tag(text):
     ]
     for pattern, repl in tidy:
         text_with_newlines = re.sub(pattern, repl, text_with_newlines)
-    # replace 2 and more space with 1 space 
-    # replace 1 space end with enter with enter
 
-    
     return text_with_newlines
 
 def md_file(df):
-    # for each item text_list, i want to create a file and put it in a folder in the name of today's date
-    # and the file name is the title of the item
-    # and the file content is the description of the item
     # get today date string
     today = pd.Timestamp.today().strftime('%Y%m%d')
     dir = Path(f'./docs/{today}')
     if not dir.exists():
         dir.mkdir(parents=True)
     # write index.md
-    position = 20309999-int(today)
-    front_str = f'---\nsidebar_position: {position}\n---\n\n'
     index_fn = f'{dir}/index.md'
-    with open(index_fn, 'w', encoding='utf-8') as f:
-        f.write(front_str)
-        f.write(f'# {today}')
+    if not Path(index_fn).exists():
+        position = 20309999-int(today)
+        front_str = f'---\nsidebar_position: {position}\n---\n\n'
+        with open(index_fn, 'w', encoding='utf-8') as f:
+            f.write(front_str)
+            f.write(f'# {today}')
 
     # write content file
     agent = df['agent']
@@ -98,5 +114,4 @@ def md_file(df):
         f.write(df['text'])
 
 if __name__ == '__main__':
-    df = readnews()
-    md_file(df)
+    fire.Fire()
