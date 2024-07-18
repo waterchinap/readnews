@@ -4,6 +4,8 @@ from pathlib import Path
 from bs4 import BeautifulSoup as bs
 import re
 import fire
+import sqlite3
+from datetime import datetime
 
 SERVER = 'http://localhost:1200'
 ROUTERS = [
@@ -18,6 +20,26 @@ ROUTERS = [
     '/caijing/roll',
     '/cls/hot']
 
+def create_db_and_table():
+    db_path = Path('news.db')
+    if not db_path.exists():
+        conn = sqlite3.connect('news.db')
+        c = conn.cursor()
+        c.execute('''CREATE TABLE feeds
+                     (
+                  agent TEXT,
+                  title TEXT,
+                  disc TEXT,
+                  pubdate TEXT,
+                  PRIMARY KEY (agent, title)
+                  )''')
+        conn.commit()
+        conn.close()
+
+def fmt_date(date_str):
+    date_obj = datetime.strptime(date_str, '%a, %d %b %Y %H:%M:%S %Z')
+    return date_obj.strftime('%Y%m%d')
+
 def get_a_news(feed, n=0):
     # recieve a feed obj and a number
     d = feed.entries
@@ -27,41 +49,60 @@ def get_a_news(feed, n=0):
         items = n
     else: items=len(d)
 
-    text = '\n\n'.join(
-        [f'## {t.title}\n\n{de_tag(t.description)}' for t in d[:items]]
-    )
+    agent = feed['feed'].title
+    title_list = [t.title for t in d[:items]]
+    disc = [de_tag(t.description) for t in d[:items]]
+    pubdate = [fmt_date(t.published) for t in d[:items]]
+
+    db_list = list(zip([agent]*len(title_list), title_list, disc, pubdate))
+    conn = sqlite3.connect('news.db')
+    c = conn.cursor()
+    c.executemany('INSERT OR IGNORE INTO feeds VALUES (?,?,?,?)', db_list)
+    conn.commit()
+    conn.close()
+
+    brief = f'## {feed.feed.title}\n\n' +'\n\n'.join(title_list)
+    text = '\n\n'.join(disc)
     text = re.sub(r'\n{3,}', '\n\n', text)
     content = {
-        'agent': feed['feed'].title,
-        'text': text
+        # 'agent': agent,
+        'text': text,
+        'brief': brief
     }
     print(f'{feed["feed"].title} is ok!')
     return content
 
 def pub_all(n=0):
+    create_db_and_table()
+    # make dir
+    today = pd.Timestamp.today().strftime('%Y%m%d')
+    dir = Path(f'./docs/{today}')
+    if not dir.exists():
+        dir.mkdir(parents=True)
+
+    # publish one news and get out the brief
+    brief = []
     for r in ROUTERS:
         f = feedparser.parse(SERVER+r)
         if not 'title' in f.feed:
             print(r +' failed!')
             continue
         content = get_a_news(f, n)
-        md_file(content)
-    return 'published!'
+        brief.append(content['brief'])
+        news_fn = f'{dir}/{f["feed"].title}.md'
+        with open(news_fn, 'w', encoding='utf-8') as f:
+            f.write(content['text'])
 
-def get_content(url, n=10):
-    f = feedparser.parse(url)
-    d = f.entries
-    if len(d) < n:
-        n = len(d)
-    text = '\n\n'.join(
-        [f'## {t.title}\n\n{de_tag(t.description)}' for t in d[:n]]
-    )
-    text = re.sub(r'\n{3,}', '\n\n', text)
-    content = {
-        'agent': f['feed'].title,
-        'text': text
-    }
-    return content
+    # write brief file
+    brief_fn = f'{dir}/index.md'
+    position = 20309999-int(today)
+    front_str = f'---\nsidebar_position: {position}\n---\n\n'
+    with open(brief_fn, 'w', encoding='utf-8') as f:
+        f.write(front_str)
+        f.write(f'# {today} \n\n')
+        f.write('\n\n'.join(brief))
+
+    return 'published!'
 
 def de_tag(text):
     soup = bs(text, 'html.parser')
@@ -91,27 +132,6 @@ def de_tag(text):
         text_with_newlines = re.sub(pattern, repl, text_with_newlines)
 
     return text_with_newlines
-
-def md_file(df):
-    # get today date string
-    today = pd.Timestamp.today().strftime('%Y%m%d')
-    dir = Path(f'./docs/{today}')
-    if not dir.exists():
-        dir.mkdir(parents=True)
-    # write index.md
-    index_fn = f'{dir}/index.md'
-    if not Path(index_fn).exists():
-        position = 20309999-int(today)
-        front_str = f'---\nsidebar_position: {position}\n---\n\n'
-        with open(index_fn, 'w', encoding='utf-8') as f:
-            f.write(front_str)
-            f.write(f'# {today}')
-
-    # write content file
-    agent = df['agent']
-    file_name = f'{dir}/{agent}.md'
-    with open(file_name, 'w', encoding='utf-8') as f:
-        f.write(df['text'])
 
 if __name__ == '__main__':
     fire.Fire()
