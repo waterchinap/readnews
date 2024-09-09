@@ -6,6 +6,9 @@ import re
 import fire
 import sqlite3
 from datetime import datetime
+import subprocess
+import random
+import akshare as ak
 
 SERVER = 'http://localhost:1200'
 ROUTERS = [
@@ -15,9 +18,10 @@ ROUTERS = [
     '/nytimes',
     '/bbc/chinese',
     '/caixin/article',
-    '/wsj/zh-cn/opinion',
     '/yicai/headline',
     '/caijing/roll',
+    # '/apnews/topics/apf-topnews',
+    # '/reuters/world/china',
     '/cls/hot']
 
 def create_db_and_table():
@@ -95,16 +99,21 @@ def pub_all(n=0):
 
     # write brief file
     brief_fn = f'{dir}/index.md'
+    brief_text = '\n\n'.join(brief)
     position = 20309999-int(today)
     front_str = f'---\nsidebar_position: {position}\n---\n\n'
     with open(brief_fn, 'w', encoding='utf-8') as f:
         f.write(front_str)
         f.write(f'# {today} \n\n')
-        f.write('\n\n'.join(brief))
+        f.write(brief_text)
+    print('published!')
 
-    return 'published!'
+    return brief_text
 
 def de_tag(text):
+    """
+    remove html tags
+    """
     soup = bs(text, 'html.parser')
     for img in soup(['img', 'figure']):
         img.decompose()
@@ -132,6 +141,47 @@ def de_tag(text):
         text_with_newlines = re.sub(pattern, repl, text_with_newlines)
 
     return text_with_newlines
+
+def edge(text, voice=20):
+    # must install edge-tts package first
+    V = [
+        'zh-CN-XiaoxiaoNeural',
+        'zh-CN-XiaoyiNeural',
+        'zh-CN-YunjianNeural',
+        'zh-CN-YunxiNeural',
+        'zh-CN-YunxiaNeural',
+        'zh-CN-YunyangNeural',
+        'zh-CN-liaoning-XiaobeiNeural',
+        'zh-TW-HsiaoChenNeural',
+        'zh-TW-YunJheNeural',
+    ]
+    if voice > len(V):
+        voice = random.randint(0, len(V)-1)
+    subprocess.run(['edge-playback', '--voice', V[voice], '--text', text])
+
+def read_brief():
+    text = pub_all()
+    edge(text)
+
+def read_aknews(voice=20, n=100):
+    """
+    play all aknews
+    """
+    dfs = {
+        '东方财富：' : ak.stock_info_global_em().iloc[:n,0],
+        '财联社：' : ak.stock_info_global_cls(symbol="全部").iloc[:n,1],
+        '新浪财经：' : ak.stock_info_global_sina().iloc[:,1],
+        '同花顺：' : ak.stock_info_global_ths().iloc[:,0]
+    }
+    def tidy(df):
+        sel = df.sort_index(ascending=False)
+        sel = sel.loc[sel != ''].drop_duplicates()
+        sel = ['第'+str(i+1)+'条、' for i in range(len(sel))] + sel
+        text = '。'.join(sel)
+        return text
+    for k, v in dfs.items():
+        text = k + tidy(v)
+        edge(text, voice)
 
 if __name__ == '__main__':
     fire.Fire()
