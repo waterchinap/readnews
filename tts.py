@@ -1,14 +1,19 @@
 import os
+import random
+import subprocess
+import select
+import sys
+import time
+
 import azure.cognitiveservices.speech as speechsdk
 import akshare as ak
-import subprocess
-import numpy as np
-import fire
-import random
 import feedparser
+from gtts import gTTS
+# import fire
+# import numpy as np
 import pandas as pd
 
-def rss(n=50, voice=20):
+def rss_news(n=50, voice=20):
     """
     use https://rss-source.com/ feeds
     以下三个网站的rss源比较规整，可以选择。
@@ -29,7 +34,8 @@ def rss(n=50, voice=20):
 
         text = k + '：'+'。'.join(item_list)
 
-        edge(text, voice) 
+        # edge(text, voice) 
+        play(text)
 
 def tidy(df):
     sel = df.sort_index(ascending=False)
@@ -55,7 +61,7 @@ def news(agent='em', n=100, voice=20):
     text = tidy(dfs[agent])
     edge(text, voice)
 
-def aknews(voice=20, n=100):
+def ak_news(voice=20, n=100):
     """
     play all aknews
     """
@@ -113,5 +119,37 @@ def edge(text, voice=20):
         voice = random.randint(0, len(V)-1)
     subprocess.run(['edge-playback', '--voice', V[voice], '--text', text])
 
+def test1():
+    time.sleep(2)
+    print('test1')
+
+def test2():
+    time.sleep(2)
+    print('test2')
+
+def main():
+    while True:
+        print('Enter a number in 10 sec:')
+        print('1: ak_news')
+        print('2: rss_news')
+        choice = None
+        ready, _, _ = select.select([sys.stdin], [], [], 10)
+        if ready:
+            choice = sys.stdin.readline().strip()
+
+            try:
+                if choice == '1':
+                    ak_news()
+                elif choice == '2':
+                    rss_news()
+                else:
+                    print('invalid input')
+            except KeyboardInterrupt:
+                print('stop, exit.')
+                exit()
+        else:
+            print(f'no input, exit.\n')
+            sys.exit()
+
 if __name__ == '__main__':
-    fire.Fire()
+    main()
